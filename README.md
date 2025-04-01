@@ -2,7 +2,7 @@
 
 A comprehensive tool that analyzes news articles for companies using Natural Language Processing techniques to extract sentiment, summarize content, identify key topics, and provide audio summaries in Hindi.
 
-![News Analyzer](https://via.placeholder.com/800x400?text=News+Analyzer+Dashboard)
+![News Analyzer]![d1](https://github.com/user-attachments/assets/d9ecbd5f-1074-4e9b-a66f-b4d8d962d467)
 
 ## Table of Contents
 
