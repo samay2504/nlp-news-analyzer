@@ -2,7 +2,7 @@
 
 A comprehensive tool that analyzes news articles for companies using Natural Language Processing techniques to extract sentiment, summarize content, identify key topics, and provide audio summaries in Hindi.
 
-![News Analyzer]![d1](https://github.com/user-attachments/assets/d9ecbd5f-1074-4e9b-a66f-b4d8d962d467)
+![News Analyzer](https://github.com/user-attachments/assets/d9ecbd5f-1074-4e9b-a66f-b4d8d962d467)
 
 ## Table of Contents
 
@@ -78,7 +78,7 @@ The application follows a client-server architecture:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/company-news-analyzer.git
+   git clone https://github.com/samay2504/company-news-analyzer.git
    cd company-news-analyzer
    ```
 
