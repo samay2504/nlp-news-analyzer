@@ -95,7 +95,8 @@ async def analyze_news(request: CompanyRequest):
     common_topics = [t for t, count in topic_counts.items() if count > 1]
     unique_topics = [t for t, count in topic_counts.items() if count == 1]
 
-    # Generate Hindi TTS summary
+    # Generate Hindi TTS summary using numerical values
+    # (conversion to Hindi words happens inside generate_tts)
     total = len(articles)
     pos, neg, neu = sentiment_dist['Positive'], sentiment_dist['Negative'], sentiment_dist['Neutral']
 
@@ -108,6 +109,7 @@ async def analyze_news(request: CompanyRequest):
     if common_topics:
         tts_text += " मुख्य विषय: " + ", ".join(common_topics[:3]) + "।"
 
+    # Generate TTS audio
     tts_audio = generate_tts(tts_text)
 
     return {
