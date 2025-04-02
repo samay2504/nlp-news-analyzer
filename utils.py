@@ -3,12 +3,13 @@ import requests
 from bs4 import BeautifulSoup
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from keybert import KeyBERT
-from transformers import pipeline, VitsModel, AutoTokenizer
+from transformers import pipeline, VitsModel, AutoTokenizer, AutoModelForTextToWaveform
 import io
 import soundfile as sf
 import torch
 import logging
 import numpy as np
+import re
 from typing import List, Dict, Any
 
 # Configure logging
@@ -45,7 +46,8 @@ class ModelManager:
 
             # TTS model for Hindi
             try:
-                self.tts_model = VitsModel.from_pretrained("facebook/mms-tts-hin")
+                # Use AutoModelForTextToWaveform instead of VitsModel for better compatibility
+                self.tts_model = AutoModelForTextToWaveform.from_pretrained("facebook/mms-tts-hin")
                 self.tts_tokenizer = AutoTokenizer.from_pretrained("facebook/mms-tts-hin")
             except Exception as e:
                 logger.error(f"Failed to load TTS model: {str(e)}")
@@ -57,6 +59,42 @@ class ModelManager:
         except Exception as e:
             logger.error(f"Error during model initialization: {str(e)}")
             raise
+
+
+def number_to_hindi_words(num):
+    """Convert a number (0-1000) to its Hindi word equivalent."""
+    if num == 0:
+        return "शून्य"
+
+    units = ["", "एक", "दो", "तीन", "चार", "पाँच", "छह", "सात", "आठ", "नौ", "दस",
+             "ग्यारह", "बारह", "तेरह", "चौदह", "पंद्रह", "सोलह", "सत्रह", "अठारह", "उन्नीस"]
+    tens = ["", "", "बीस", "तीस", "चालीस", "पचास", "साठ", "सत्तर", "अस्सी", "नब्बे"]
+
+    if num < 20:
+        return units[num]
+    elif num < 100:
+        ten, unit = divmod(num, 10)
+        return tens[ten] + (" " + units[unit] if unit else "")
+    elif num < 1000:
+        hundred, remainder = divmod(num, 100)
+        return units[hundred] + " सौ" + (" " + number_to_hindi_words(remainder) if remainder else "")
+    else:
+        thousand, remainder = divmod(num, 1000)
+        return (number_to_hindi_words(thousand) + " हज़ार" +
+                (" " + number_to_hindi_words(remainder) if remainder else ""))
+
+
+def convert_numbers_in_text(text):
+    """Replace digits in Hindi text with their word equivalents."""
+
+    # Find all numbers in the text
+    def replace_num(match):
+        num = int(match.group(0))
+        return number_to_hindi_words(num)
+
+    # Replace standalone numbers
+    processed_text = re.sub(r'\b\d+\b', replace_num, text)
+    return processed_text
 
 
 def get_news_articles(company: str) -> List[Dict[str, Any]]:
@@ -197,7 +235,7 @@ def extract_topics(text: str) -> List[str]:
 
 
 def generate_tts(text: str) -> bytes:
-    """Generate Hindi speech from text."""
+    """Generate Hindi speech from text with improved number pronunciation."""
     if not text:
         # Return empty audio bytes if no text
         empty_audio = np.zeros((1, 16000), dtype=np.float32)
@@ -212,18 +250,27 @@ def generate_tts(text: str) -> bytes:
             model_manager.initialize()
 
         if model_manager.tts_model and model_manager.tts_tokenizer:
+            # Convert numerical digits to Hindi words
+            processed_text = convert_numbers_in_text(text)
+
+            # Debug logging
+            logger.info(f"Original text: {text}")
+            logger.info(f"Processed text with Hindi numbers: {processed_text}")
+
             # Process input text
-            inputs = model_manager.tts_tokenizer(text, return_tensors="pt")
+            inputs = model_manager.tts_tokenizer(processed_text, return_tensors="pt")
 
             with torch.no_grad():
                 output = model_manager.tts_model(**inputs).waveform
 
+            # Save to buffer
             buffer = io.BytesIO()
             sf.write(buffer, output.numpy().T, model_manager.tts_model.config.sampling_rate, format='WAV')
             buffer.seek(0)
             return buffer.getvalue()
         else:
             # Fallback for missing TTS model
+            logger.warning("TTS model not available, returning empty audio")
             empty_audio = np.zeros((1, 16000), dtype=np.float32)
             buffer = io.BytesIO()
             sf.write(buffer, empty_audio, 16000, format='WAV')
